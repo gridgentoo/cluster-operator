@@ -436,12 +436,18 @@ func (builder *StatefulSetBuilder) podTemplateSpec(annotations, labels map[strin
 	}
 
 	tlsSpec := builder.Instance.Spec.TLS
-	if tlsSpec.SecretName != "" {
+	// TODO we should call builder.Instance.TLSEnabled()
+	if builder.Instance.TLSEnabled() {
 		// add tls port
 		ports = append(ports, corev1.ContainerPort{
 			Name:          "amqps",
 			ContainerPort: 5671,
-		})
+		},
+			corev1.ContainerPort{
+				Name:          "https",
+				ContainerPort: 15671,
+			},
+		)
 
 		// add tls volume
 		filePermissions := int32(400)

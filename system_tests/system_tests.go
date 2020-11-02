@@ -296,11 +296,12 @@ CONSOLE_LOG=new`
 	})
 
 	Context("TLS", func() {
-		When("TLS is correctly configured", func() {
+		FWhen("TLS is correctly configured", func() {
 			var (
 				cluster       *rabbitmqv1beta1.RabbitmqCluster
 				hostname      string
 				amqpsNodePort string
+				httpsNodePort string
 				username      string
 				password      string
 				caFilePath    string
@@ -321,26 +322,40 @@ CONSOLE_LOG=new`
 					cluster.Spec.TLS.SecretName = "rabbitmq-tls-test-secret"
 				})).To(Succeed())
 				waitForTLSUpdate(cluster)
-				amqpsNodePort = rabbitmqNodePort(ctx, clientSet, cluster, "amqps")
 			})
 
-			AfterEach(func() {
-				Expect(rmqClusterClient.Delete(context.TODO(), cluster)).To(Succeed())
-				Expect(k8sDeleteSecret("rabbitmq-tls-test-secret", namespace)).To(Succeed())
-			})
+			//AfterEach(func() {
+			//	Expect(rmqClusterClient.Delete(context.TODO(), cluster)).To(Succeed())
+			//	Expect(k8sDeleteSecret("rabbitmq-tls-test-secret", namespace)).To(Succeed())
+			//})
 
-			It("talks amqps with RabbitMQ", func() {
-				var err error
-				username, password, err = getUsernameAndPassword(ctx, clientSet, "rabbitmq-system", "tls-test-rabbit")
-				Expect(err).NotTo(HaveOccurred())
+			It("RabbitMQ responds to requests over secured protocols", func() {
+				By("talking AMQPS", func() {
+					amqpsNodePort = rabbitmqNodePort(ctx, clientSet, cluster, "amqps")
+					var err error
+					username, password, err = getUsernameAndPassword(ctx, clientSet, "rabbitmq-system", "tls-test-rabbit")
+					Expect(err).NotTo(HaveOccurred())
 
-				// try to publish and consume a message on a amqps url
-				sentMessage := "Hello Rabbitmq!"
-				Expect(publishToQueueAMQPS(sentMessage, username, password, hostname, amqpsNodePort, caFilePath)).To(Succeed())
+					// try to publish and consume a message on a amqps url
+					sentMessage := "Hello Rabbitmq!"
+					Expect(publishToQueueAMQPS(sentMessage, username, password, hostname, amqpsNodePort, caFilePath)).To(Succeed())
 
-				recievedMessage, err := getMessageFromQueueAMQPS(username, password, hostname, amqpsNodePort, caFilePath)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(recievedMessage).To(Equal(sentMessage))
+					recievedMessage, err := getMessageFromQueueAMQPS(username, password, hostname, amqpsNodePort, caFilePath)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(recievedMessage).To(Equal(sentMessage))
+				})
+
+				By("connecting to management API over TLS", func() {
+					//TODO: reset next line to: httpsNodePort = rabbitmqNodePort(ctx, clientSet, cluster, "https")
+					var err error
+
+					httpsNodePort = "15671"
+					username, password, err = getUsernameAndPassword(ctx, clientSet, "rabbitmq-system", "tls-test-rabbit")
+					Expect(err).NotTo(HaveOccurred())
+
+					// try to connect to a management API endpoint over TLS
+					Expect(connectHTTPS(username, password, hostname, httpsNodePort, caFilePath)).To(Succeed())
+				})
 			})
 		})
 
