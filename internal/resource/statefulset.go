@@ -436,7 +436,6 @@ func (builder *StatefulSetBuilder) podTemplateSpec(annotations, labels map[strin
 	}
 
 	tlsSpec := builder.Instance.Spec.TLS
-	// TODO we should call builder.Instance.TLSEnabled()
 	if builder.Instance.TLSEnabled() {
 		// add tls port
 		ports = append(ports, corev1.ContainerPort{

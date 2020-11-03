@@ -11,6 +11,8 @@ package system_tests
 
 import (
 	"context"
+	"fmt"
+
 	"k8s.io/utils/pointer"
 
 	. "github.com/onsi/ginkgo"
@@ -312,12 +314,14 @@ CONSOLE_LOG=new`
 				Expect(createRabbitmqCluster(ctx, rmqClusterClient, cluster)).To(Succeed())
 				waitForRabbitmqRunning(cluster)
 
-				// Passing a single hostname for certificate creation works because
+				// Passing a single hostname for certificate creation
 				// the AMPQS client is connecting using the same hostname
 				hostname = kubernetesNodeIp(ctx, clientSet)
+				fmt.Printf("Hostname: %v\n", hostname)
 				caFilePath = createTLSSecret("rabbitmq-tls-test-secret", namespace, hostname)
+				fmt.Printf("Ca File Path: %v\n", caFilePath)
 
-				// Update CR with TLS secret name
+				// Update RabbitmqCluster with TLS secret name
 				Expect(updateRabbitmqCluster(ctx, rmqClusterClient, cluster.Name, cluster.Namespace, func(cluster *rabbitmqv1beta1.RabbitmqCluster) {
 					cluster.Spec.TLS.SecretName = "rabbitmq-tls-test-secret"
 				})).To(Succeed())
@@ -352,9 +356,11 @@ CONSOLE_LOG=new`
 					httpsNodePort = "15671"
 					username, password, err = getUsernameAndPassword(ctx, clientSet, "rabbitmq-system", "tls-test-rabbit")
 					Expect(err).NotTo(HaveOccurred())
+					fmt.Printf("Username: %v\nPassword: %v\n", username, password)
 
 					// try to connect to a management API endpoint over TLS
-					Expect(connectHTTPS(username, password, hostname, httpsNodePort, caFilePath)).To(Succeed())
+					err = connectHTTPS(username, password, hostname, httpsNodePort, caFilePath)
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 		})

@@ -608,7 +608,7 @@ var _ = Describe("StatefulSet", func() {
 				}))
 			})
 
-			FIt("opens ports 5671 and 15671 on the rabbitmq container", func() {
+			It("opens ports 5671 and 15671 on the rabbitmq container", func() {
 				instance.Spec.TLS.SecretName = "tls-secret"
 				Expect(stsBuilder.Update(statefulSet)).To(Succeed())
 
